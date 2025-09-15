@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:percent_indicator/percent_indicator.dart';
-
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
 
 void main() {
@@ -36,30 +33,79 @@ class PortfolioHomePage extends StatefulWidget {
 
 class _PortfolioHomePageState extends State<PortfolioHomePage> {
 
-// Helper Widgets
-Widget _buildSkillChip(String skill) {
+
+
+// Skill Item Widget
+Widget _skillItem(IconData icon, String skill) {
+  return Row(
+    children: [
+      Icon(icon, size: 24, color: Colors.blueAccent),
+      const SizedBox(width: 10),
+      Text(
+        skill,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Colors.black87,
+        ),
+      ),
+    ],
+  );
+}
+
+  // Add this function above your build method (outside the widget tree)
+Widget _highlightCard(String title, String description, IconData icon) {
   return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    padding: const EdgeInsets.all(20),
+    margin: const EdgeInsets.only(bottom: 18),
     decoration: BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       boxShadow: [
         BoxShadow(
-          color: Colors.grey.withOpacity(0.2),
-          spreadRadius: 2,
-          blurRadius: 5,
-          offset: const Offset(0, 3),
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
         ),
       ],
-      border: Border.all(color: Colors.grey.shade300),
     ),
-    child: Text(
-      skill,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.black87,
-      ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.blueAccent.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 26, color: Colors.blueAccent),
+        ),
+        const SizedBox(width: 15),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     ),
   );
 }
@@ -80,60 +126,7 @@ Widget _buildSocialIcon(IconData icon, String url) {
 }
 
 
-Widget _circularSkillIndicator(String skill, double percent,
-    {Color color = Colors.blue, double radius = 38}) {
-  final ValueNotifier<bool> isVisibleNotifier = ValueNotifier(false);
 
-  return VisibilityDetector(
-    key: Key(skill),
-    onVisibilityChanged: (info) {
-      if (info.visibleFraction > 0.5) {
-        isVisibleNotifier.value = true;
-      } else {
-        isVisibleNotifier.value = false;
-      }
-    },
-    child: ValueListenableBuilder<bool>(
-      valueListenable: isVisibleNotifier,
-      builder: (context, isVisible, child) {
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: isVisible ? percent : 0),
-          duration: const Duration(milliseconds: 3800),
-          curve: Curves.easeOut,
-          builder: (context, animatedPercent, child) {
-            return CircularPercentIndicator(
-              radius: radius,
-              lineWidth: 6,
-              percent: animatedPercent,
-              animation: false,
-              center: Text(
-                "${(animatedPercent * 100).toInt()}%",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: radius * 0.3,
-                ),
-              ),
-              progressColor: color,
-              backgroundColor: Colors.grey[300]!,
-              circularStrokeCap: CircularStrokeCap.round,
-              footer: Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  skill,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: radius*0.5,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    ),
-  );
-}
 
 Widget _buildProjectCard({
   required String title,
@@ -204,7 +197,6 @@ Widget _buildProjectCard({
     ),
   );
 }
-
 
 // Inline social icon button widget
 Widget _socialIconButton({
@@ -387,7 +379,7 @@ TextButton(
       ),
       const SizedBox(height: 30),
       Text(
-"Computer Science Engineering student skilled in Flutter, Firebase, SQL, MongoDB, Java, C++, Git/GitHub, Sqflite, and SharedPreferences. Passionate about building cross-platform apps with secure authentication, clean UI/UX, and optimized performance. Strong problem-solver focused on writing maintainable, efficient code."       ,
+"Computer Science Engineering student skilled in Flutter, Firebase, SQL, MongoDB, Java, C++, Git/GitHub, Sqflite, and SharedPreferences. Passionate about building cross-platform apps with secure authentication, clean UI/UX, optimized performance, and seamless user experience. Strong problem-solver focused on writing maintainable, efficient, and scalable code.",
  style: GoogleFonts.nunito(
           color: Colors.white,
           fontSize: 18,
@@ -459,7 +451,7 @@ TextButton(
       message: "GitHub",
       child: _buildSocialIcon(
         FontAwesomeIcons.github,
-        "https://github.com/prajakta-jadhav",
+        "https://github.com/prajaktajadhav177",
       ),
     ),
 
@@ -497,126 +489,121 @@ TextButton(
   ),
 ),
               // About Section
-     Container(
-       key: _aboutKey,
-       padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 60),
-       color: Colors.white,
-       width: double.infinity,
-       child: Column(
-         crossAxisAlignment: CrossAxisAlignment.start,
-         children: [
-           AnimatedOpacity(
-             opacity: _animateAbout ? 1 : 0,
-             duration: const Duration(milliseconds: 1700),
-             curve: Curves.easeIn,
-             child: const Text(
-               "About Me",
-               style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-             ),
-           ),
-           const SizedBox(height: 30),
-           Row(
-             crossAxisAlignment: CrossAxisAlignment.start,
-             children: [
-               Expanded(
-                 flex: 1,
-                 child:  AnimatedSlide(
-        offset: _animateAbout ? Offset.zero : const Offset(-1, 0),
-        duration: const Duration(milliseconds: 1500),
-        curve: Curves.easeOut,
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.shade300,
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                "Who I Am",
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blueAccent,
-                ),
-              ),
-              SizedBox(height: 15),
-              Text(
-                "I am a final-year Computer Science student passionate about building impactful mobile and web applications. With 6 months of hands-on experience gained through internships, I enjoy creating responsive and engaging user interfaces and continuously improving my skills in Flutter, Firebase, SQL, and other technologies. I thrive in collaborative environments and am committed to delivering high-quality solutions.",
-                style: TextStyle(
-                  fontSize: 16,
-                  height: 1.6,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-                 )
-               ),
-               const SizedBox(width: 40),
-
-Expanded(
-  flex: 1,
-  child: SingleChildScrollView(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Technical Skills",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-
-       Wrap(
-                    spacing: 17,
-                    runSpacing: 20,
-                    children: [
-                      _circularSkillIndicator("Flutter", 0.9, color: const Color.fromARGB(154, 238, 94, 241)),
-                      _circularSkillIndicator("Dart", 0.85, color: const Color.fromARGB(154, 239, 139, 109)),
-                      _circularSkillIndicator("Java", 0.8, color: const Color.fromARGB(154, 2, 201, 168)),
-                      _circularSkillIndicator("C++", 0.75, color: const Color.fromARGB(255, 147, 240, 126)),
-                      _circularSkillIndicator("Firebase", 0.8, color: const Color.fromARGB(255, 239, 147, 157)),
-                      _circularSkillIndicator("Databases", 0.7, color: const Color.fromARGB(255, 124, 216, 242),),
-                    ],
-                  ),
-        const SizedBox(height: 30),
-
-        const Text(
-          "Professional Skills",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-
-        Wrap(
-          spacing: 20,
-          runSpacing: 20,
-          children: [
-            _circularSkillIndicator("UI/UX Design", 0.75, color: const Color.fromARGB(255, 204, 98, 140)),
-            _circularSkillIndicator("Problem Solving", 0.85, color: Colors.teal),
-            _circularSkillIndicator("Team Collaboration", 0.8, color: const Color.fromARGB(255, 243, 117, 230)),
-            _circularSkillIndicator("Critical Thinking", 0.8, color: const Color.fromARGB(255, 81, 253, 113)),
-          ],
-        ),
-      ],
+  Container(
+  key: _aboutKey,
+  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 70),
+  width: double.infinity,
+  decoration: const BoxDecoration(
+    gradient: LinearGradient(
+      colors: [Color(0xFFF9FAFB), Color(0xFFEFF3F6)], // subtle light gradient
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
     ),
   ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Section Title
+      Row(
+        children: [
+          Container(
+            width: 6,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.blueAccent,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            "About Me",
+            style: TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 40),
+
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left Side - About Text
+          Expanded(
+            flex: 1,
+            child: Container(
+              padding: const EdgeInsets.all(25),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    "Who I Am",
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueAccent,
+                    ),
+                  ),
+                  SizedBox(height: 15),
+                  Text(
+"I am a final-year Computer Science student passionate about building impactful mobile and web applications. With 6 months of hands-on internship experience, I enjoy creating smooth, engaging, and visually appealing user experiences while continuously improving my technical skills in Flutter, Firebase, SQL, and other technologies.",
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.6,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 50),
+
+          // Right Side - Highlights
+          Expanded(
+            flex: 1,
+            child: Column(
+              children: [
+                _highlightCard(
+                  "Mobile App Development",
+                  "Specializing in Flutter & Firebase, building smooth, scalable cross-platform apps.",
+                  Icons.phone_android,
+                ),
+                _highlightCard(
+                  "Backend & Database Skills",
+                  "Experience with Firebase, SQL, and REST APIs for reliable data management.",
+                  Icons.storage,
+                ),
+                _highlightCard(
+                  "UI/UX Focus",
+                  "Clean, user-friendly, and responsive interfaces with attention to detail.",
+                  Icons.design_services,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ],
+  ),
 ),
-             ]
-)
-             ],
-             
-           ),
-         
-       ),
+
+
         
 // Experience Section
 Container(
@@ -635,28 +622,28 @@ Container(
     children: [
       // Title with divider
       Row(
-        children: const [
-          Icon(Icons.work, size: 32, color: Colors.blue),
-          SizedBox(width: 10),
-          Text(
+        children:[
+            Container(
+            width: 6,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Colors.blueAccent,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
             "Experience",
             style: TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.bold,
-              color: Colors.blueAccent,
+              color: Colors.black87,
+              letterSpacing: 0.5,
             ),
           ),
         ],
       ),
-      const SizedBox(height: 5),
-      Container(
-        height: 3,
-        width: 80,
-        decoration: BoxDecoration(
-          color: Colors.blueAccent,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
+     
       const SizedBox(height: 30),
 
       // Experience Card 1
@@ -813,33 +800,89 @@ Container(
 // Projects Section
 Container(
   key: _projectsKey,
-  padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 40),
-  color: Colors.grey[50],
   width: double.infinity,
+  decoration: const BoxDecoration(
+    gradient: LinearGradient(
+      colors: [
+        Color(0xFFBBDEFB), // Medium-light blue
+        Color(0xFFE3F2FD), // Very light blue
+      ],
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+    ),
+  ),
+  padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 40),
   child: Column(
-    crossAxisAlignment: CrossAxisAlignment.center,
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
-        "🚀 Projects",
-        style: TextStyle(
-          fontSize: 36,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.5,
-        ),
+      // Heading Row with Animated Bar
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 50),
+            duration: const Duration(milliseconds: 900),
+            curve: Curves.easeOutBack,
+            builder: (context, value, child) {
+              return Container(
+                width: 6,
+                height: value,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Colors.blueAccent, Colors.lightBlue],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            "Projects",
+            style: TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
       ),
-      const SizedBox(height: 10),
+
+      // Underline Animation
+      const SizedBox(height: 8),
+      TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 120),
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return Container(
+            height: 4,
+            width: value,
+            decoration: BoxDecoration(
+              color: Colors.blueAccent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          );
+        },
+      ),
+
+      const SizedBox(height: 16),
       const Text(
         "Here are some of my highlighted works",
         style: TextStyle(
-          fontSize: 16,
+          fontSize: 18,
           color: Colors.black54,
           fontStyle: FontStyle.italic,
         ),
       ),
       const SizedBox(height: 40),
 
+      // Project Cards
       Wrap(
-        spacing: 20,
+        spacing: 50,
         runSpacing: 20,
         alignment: WrapAlignment.center,
         children: [
@@ -854,7 +897,7 @@ Container(
           _buildProjectCard(
             title: "SoulSync",
             description:
-                "Matrimony app with profile matching, chat, and Firebase authentication.",
+                "Matrimony app with profile matching, chat, video call , voice call and Firebase authentication.",
             githubUrl: "https://github.com/prajaktajadhav177/soulsync",
             icon: Icons.favorite,
             color: Colors.pink,
@@ -871,7 +914,7 @@ Container(
           _buildProjectCard(
             title: "ToDo App",
             description:
-                "Automated academic book/project verification system with plagiarism check and reporting.",
+                "A simple ToDo app to manage tasks, set priorities, and track daily progress efficiently.",
             githubUrl: "https://github.com/prajaktajadhav177/Basic-todo-app",
             icon: Icons.check_circle,
             color: Colors.deepPurple,
@@ -884,47 +927,148 @@ Container(
 
 
 
-// Skills Section
+
 Container(
   key: _skillsKey,
-  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 60),
-  color: Colors.grey[50],
   width: double.infinity,
+  padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+  color: const Color(0xFFF5F7FA),
   child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      const Text(
-        "Skills",
-        style: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.2,
-        ),
+ Row(
+        children: [
+          Container(
+                width: 6,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                "Skills",
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                  letterSpacing: 0.5,
+                ),
+              ),
+          const SizedBox(height: 30 ),
+          
+        ],
       ),
-      const SizedBox(height: 30),
 
       Wrap(
-        spacing: 15,
-        runSpacing: 15,
-        children: [
-          _buildSkillChip("Flutter & Dart"),
-          _buildSkillChip("Firebase & Firestore"),
-         _buildSkillChip("JAVA"),
-           _buildSkillChip("C++"),
-          _buildSkillChip("HTML"),
-          _buildSkillChip("CSS"),
-          _buildSkillChip("SQL"),
-          _buildSkillChip("MongoDB"),
-                    _buildSkillChip("Git / GitHub"),
-          _buildSkillChip("UI/UX Design (Figma)"),
         
-          _buildSkillChip("Version Control"),
-          _buildSkillChip("Problem Solving"),
-        ],
+        spacing: 20,
+        runSpacing: 20,
+        alignment: WrapAlignment.center,
+        children: List.generate(6, (index) {
+          final skills = [
+            {
+              "icon": Icons.flutter_dash,
+              "title": "Flutter & Dart",
+              "description": "Build cross-platform apps with beautiful UI & responsive design."
+            },
+            {
+              "icon": Icons.cloud,
+              "title": "Firebase",
+              "description": "Realtime database, auth, cloud functions & hosting."
+            },
+            {
+              "icon": Icons.storage,
+              "title": "SQL / MongoDB",
+              "description": "Efficient data storage, querying & database management."
+            },
+            {
+              "icon": Icons.merge_type,
+              "title": "Git & GitHub",
+              "description": "Version control and collaborative project management."
+            },
+            {
+              "icon": Icons.design_services,
+              "title": "UI/UX Design",
+              "description": "Design clean, intuitive & user-friendly interfaces."
+            },
+            {
+              "icon": Icons.code,
+              "title": "Java / C++",
+              "description": "Strong backend programming skills with OOP and algorithms."
+            },
+          ];
+      
+          bool isHovered = false;
+      
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return MouseRegion(
+                onEnter: (_) => setState(() => isHovered = true),
+                onExit: (_) => setState(() => isHovered = false),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: isHovered ? 240 : 200,
+                  height: isHovered ? 240 : 200,
+                  padding: const EdgeInsets.all(16),
+                  transform: Matrix4.identity()..scale(isHovered ? 1.05 : 1.0),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isHovered
+                          ? [const Color.fromARGB(255, 174, 183, 234), const Color.fromARGB(255, 249, 246, 248)]
+                          : [Colors.white, Colors.grey.shade100],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: isHovered ? 20 : 10,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                    border: isHovered
+                        ? Border.all(color: const Color.fromARGB(255, 31, 100, 219), width: 2)
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(skills[index]["icon"] as IconData, size: 40, color: Colors.blueAccent),
+                      const SizedBox(height: 12),
+                      Text(
+                        skills[index]["title"] as String,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (isHovered)
+                        Text(
+                          skills[index]["description"] as String,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        }),
       ),
     ],
   ),
 ),
+
+
 
 
 
@@ -1056,23 +1200,23 @@ Container(
             icon: const Icon(Icons.email_outlined),
             label: const Text("Email Me"),
           ),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.tealAccent,
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-              elevation: 3,
-            ),
-            onPressed: () async {
-              final Uri phoneUri = Uri(scheme: 'tel', path: '+919421950013');
-              if (await canLaunchUrl(phoneUri)) {
-                await launchUrl(phoneUri);
-              }
-            },
-            icon: const Icon(Icons.phone_outlined),
-            label: const Text("Call"),
-          ),
+          // ElevatedButton.icon(
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: Colors.tealAccent,
+          //     foregroundColor: Colors.black,
+          //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          //     elevation: 3,
+          //   ),
+          //   onPressed: () async {
+          //     final Uri phoneUri = Uri(scheme: 'tel', path: '+919421950013');
+          //     if (await canLaunchUrl(phoneUri)) {
+          //       await launchUrl(phoneUri);
+          //     }
+          //   },
+          //   icon: const Icon(Icons.phone_outlined),
+          //   label: const Text("Call"),
+          // ),
         ],
       ),
 
@@ -1085,21 +1229,21 @@ Container(
           _socialIconButton(
             icon: Icons.link,
             tooltip: "LinkedIn",
-            url: "https://www.linkedin.com/in/prajakta",
+            url: "www.linkedin.com/in/prajakta-jadhav-7a4613320",
             color: Colors.lightBlueAccent,
           ),
           const SizedBox(width: 16),
           _socialIconButton(
             icon: Icons.code,
             tooltip: "GitHub",
-            url: "https://github.com/prajakta",
+            url: "https://github.com/prajaktajadhav177",
             color: Colors.white,
           ),
           const SizedBox(width: 16),
           _socialIconButton(
             icon: Icons.picture_as_pdf,
             tooltip: "Download Resume",
-            url: "https://your-resume-link.com", // Replace with actual resume link
+            url: "https://drive.google.com/file/d/1M9S68By5o7iq7tGXl73OrND0HXLgIfIm/view?usp=drive_link", // Replace with actual resume link
             color: Colors.redAccent,
           ),
         ],
