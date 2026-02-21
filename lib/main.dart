@@ -418,7 +418,7 @@ TextButton(
           OutlinedButton.icon(
             onPressed: () async {
               final Uri url = Uri.parse(
-                  "https://drive.google.com/file/d/1K--MI-cNKarbPnNBIjry5qEo0Ei4WQi3/view?usp=drive_link");
+                  "https://drive.google.com/file/d/1Fnc0uhd03yXKEj46LbF-Rrf6wsM2geXL/view?usp=drive_link");
               if (await canLaunchUrl(url)) {
                 await launchUrl(url, mode: LaunchMode.externalApplication);
               }
@@ -1243,7 +1243,7 @@ Container(
           _socialIconButton(
             icon: Icons.picture_as_pdf,
             tooltip: "Download Resume",
-            url: "https://drive.google.com/file/d/1M9S68By5o7iq7tGXl73OrND0HXLgIfIm/view?usp=drive_link", // Replace with actual resume link
+            url: "https://drive.google.com/file/d/1Fnc0uhd03yXKEj46LbF-Rrf6wsM2geXL/view?usp=drive_link", // Replace with actual resume link
             color: Colors.redAccent,
           ),
         ],
@@ -1274,4 +1274,5 @@ Container(
 );
   }
   }
+
 
