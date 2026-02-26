@@ -347,49 +347,51 @@ TextButton(
       Row(
         children: [
           CircleAvatar(
-            backgroundImage: const AssetImage('profile.jpeg'),
+            backgroundImage: const AssetImage('assets/profile.jpeg'),
             radius: 55,
             backgroundColor: Colors.white,
           ),
           const SizedBox(width: 20),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Prajakta Ganesh Jadhav",
-                style: GoogleFonts.quicksand(
-                  color: Colors.white,
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Prajakta Ganesh Jadhav",
+                  style: GoogleFonts.quicksand(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                "Flutter Developer | Problem Solver | Tech Enthusiast",
-                style: GoogleFonts.nunito(
-                  color: Colors.white70,
-                  fontSize: 18,
-                  fontStyle: FontStyle.italic,
+                const SizedBox(height: 5),
+                Text(
+                  "Flutter Developer | Java Developer | Tech Enthusiast",
+                  style: GoogleFonts.nunito(
+                    color: Colors.white70,
+                    fontSize: 18,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
       const SizedBox(height: 30),
       Text(
-"Computer Science Engineering student skilled in Flutter, Firebase, SQL, MongoDB, Java, C++, Git/GitHub, Sqflite, and SharedPreferences. Passionate about building cross-platform apps with secure authentication, clean UI/UX, optimized performance, and seamless user experience. Strong problem-solver focused on writing maintainable, efficient, and scalable code.",
- style: GoogleFonts.nunito(
+  "Computer Science Engineering student skilled in Flutter, Firebase, SQL, MongoDB, Java, C++, Git/GitHub, Sqflite, and SharedPreferences. Passionate about building cross-platform apps with secure authentication, clean UI/UX, optimized performance, and seamless user experience. Strong problem-solver focused on writing maintainable, efficient, and scalable code.",
+   style: GoogleFonts.nunito(
           color: Colors.white,
           fontSize: 18,
           height: 1.6,
         ),
       ),
       const SizedBox(height: 25),
-
+  
        const SizedBox(height: 30),
-
+  
       // Buttons
       Row(
         children: [
@@ -444,7 +446,7 @@ TextButton(
         ],
       ),
       const SizedBox(height: 25),
-
+  
       Row(
         children: [
           Tooltip(
@@ -454,13 +456,13 @@ TextButton(
         "https://github.com/prajaktajadhav177",
       ),
     ),
-
+  
     const SizedBox(width: 16),
     Tooltip(
       message: "LinkedIn",
       child: _buildSocialIcon(
         FontAwesomeIcons.linkedin,
-        "https://www.linkedin.com/in/prajakta-jadhav-7a4613320",
+        "https://www.linkedin.com/in/prajakta-jadhav-37484a260/",
       ),
     ),
           
@@ -1125,7 +1127,7 @@ Container(
             ),
             const SizedBox(height: 8),
             Text(
-              "CGPA: 8.14 / 10",
+              "SGPA: 9.8 / 10",
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[800],
@@ -1227,14 +1229,14 @@ Container(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _socialIconButton(
-            icon: Icons.link,
+            icon: FontAwesomeIcons.linkedin,
             tooltip: "LinkedIn",
-            url: "www.linkedin.com/in/prajakta-jadhav-7a4613320",
+            url: "https://www.linkedin.com/in/prajakta-jadhav-37484a260/",
             color: Colors.lightBlueAccent,
           ),
           const SizedBox(width: 16),
           _socialIconButton(
-            icon: Icons.code,
+            icon: FontAwesomeIcons.github,
             tooltip: "GitHub",
             url: "https://github.com/prajaktajadhav177",
             color: Colors.white,
