@@ -1,1280 +1,1387 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+void main() => runApp(const PortfolioApp());
 
-void main() {
-  runApp(const PortfolioApp());
-}
+// ─── Palette ──────────────────────────────────────────────────────
+const kBg       = Color(0xFF060918);
+const kSurface  = Color(0xFF0D1226);
+const kCard     = Color(0xFF111827);
+const kCardAlt  = Color(0xFF0A0F1E);
+const kIndigo   = Color(0xFF6366F1);
+const kViolet   = Color(0xFF8B5CF6);
+const kCyan     = Color(0xFF22D3EE);
+const kPink     = Color(0xFFEC4899);
+const kGreen    = Color(0xFF10B981);
+const kAmber    = Color(0xFFF59E0B);
+const kRed      = Color(0xFFF43F5E);
+const kTeal     = Color(0xFF14B8A6);
+const kText     = Color(0xFFF1F5F9);
+const kTextMid  = Color(0xFF94A3B8);
+const kTextDim  = Color(0xFF475569);
+const kBorder   = Color(0xFF1E293B);
 
 class PortfolioApp extends StatelessWidget {
   const PortfolioApp({super.key});
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'Prajakta · Portfolio',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(
+      scaffoldBackgroundColor: kBg,
+      colorScheme: const ColorScheme.dark(primary: kIndigo, surface: kSurface),
+    ),
+    home: const PortfolioPage(),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Floating particle background
+// ══════════════════════════════════════════════════════════════════
+class _Particle {
+  late double x, y, radius, speed, opacity;
+  late Color color;
+  _Particle(math.Random r, double w, double h) {
+    x       = r.nextDouble() * w;
+    y       = r.nextDouble() * h;
+    radius  = 1 + r.nextDouble() * 2.5;
+    speed   = 0.2 + r.nextDouble() * 0.5;
+    opacity = 0.15 + r.nextDouble() * 0.5;
+    color   = [kIndigo, kCyan, kViolet, kPink, kTeal][r.nextInt(5)];
+  }
+}
+
+class _ParticlePainter extends CustomPainter {
+  final List<_Particle> particles;
+  final double tick;
+  _ParticlePainter(this.particles, this.tick);
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Prajakta Portfolio',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
+  void paint(Canvas canvas, Size size) {
+    for (final p in particles) {
+      final dy = (p.y - p.speed * tick) % size.height;
+      final paint = Paint()
+        ..color = p.color.withOpacity(p.opacity)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      canvas.drawCircle(Offset(p.x, dy < 0 ? dy + size.height : dy), p.radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ParticlePainter old) => true;
+}
+
+class _ParticleBg extends StatefulWidget {
+  const _ParticleBg();
+  @override
+  State<_ParticleBg> createState() => _ParticleBgState();
+}
+
+class _ParticleBgState extends State<_ParticleBg> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  List<_Particle> _pts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 60))..repeat();
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (_, c) {
+    if (_pts.isEmpty) {
+      final rng = math.Random(42);
+      _pts = List.generate(60, (_) => _Particle(rng, c.maxWidth, c.maxHeight));
+    }
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => CustomPaint(
+        painter: _ParticlePainter(_pts, _ctrl.value * 2000),
+        size: Size(c.maxWidth, c.maxHeight),
       ),
-      home: const PortfolioHomePage(),
+    );
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Fade + slide entrance
+// ══════════════════════════════════════════════════════════════════
+class FadeSlideIn extends StatefulWidget {
+  final Widget child;
+  final Duration delay;
+  final Offset from;
+  const FadeSlideIn({super.key, required this.child,
+      this.delay = Duration.zero, this.from = const Offset(0, 30)});
+  @override
+  State<FadeSlideIn> createState() => _FadeSlideInState();
+}
+
+class _FadeSlideInState extends State<FadeSlideIn> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double>  _fade;
+  late Animation<Offset>  _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl  = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+    _fade  = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slide = Tween(begin: widget.from, end: Offset.zero)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    Future.delayed(widget.delay, () { if (mounted) _ctrl.forward(); });
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _ctrl,
+    builder: (_, child) => Opacity(
+      opacity: _fade.value,
+      child: Transform.translate(offset: _slide.value, child: child),
+    ),
+    child: widget.child,
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Pulsing dot
+// ══════════════════════════════════════════════════════════════════
+class _PulseDot extends StatefulWidget {
+  final Color color;
+  const _PulseDot({this.color = kGreen});
+  @override
+  State<_PulseDot> createState() => _PulseDotState();
+}
+class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+      ..repeat(reverse: true);
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _ctrl,
+    builder: (_, __) => Stack(alignment: Alignment.center, children: [
+      Container(width: 16, height: 16,
+          decoration: BoxDecoration(shape: BoxShape.circle,
+              color: widget.color.withOpacity(0.2 * _ctrl.value))),
+      Container(width: 8, height: 8,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color,
+              boxShadow: [BoxShadow(color: widget.color.withOpacity(0.6), blurRadius: 6)])),
+    ]),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Shimmer gradient text
+// ══════════════════════════════════════════════════════════════════
+class _ShimmerText extends StatefulWidget {
+  final String text;
+  final double fontSize;
+  final List<Color> colors;
+  const _ShimmerText(this.text,
+      {this.fontSize = 50,
+       this.colors = const [kIndigo, kCyan, kViolet, kPink, kCyan, kIndigo]});
+  @override
+  State<_ShimmerText> createState() => _ShimmerTextState();
+}
+class _ShimmerTextState extends State<_ShimmerText> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _ctrl,
+    builder: (_, __) => ShaderMask(
+      shaderCallback: (bounds) => LinearGradient(
+        colors: widget.colors,
+        stops: const [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+        begin: Alignment(_ctrl.value * 4 - 2, 0),
+        end:   Alignment(_ctrl.value * 4,     0),
+        tileMode: TileMode.mirror,
+      ).createShader(bounds),
+      child: Text(widget.text,
+          style: GoogleFonts.plusJakartaSans(
+              color: Colors.white, fontSize: widget.fontSize,
+              fontWeight: FontWeight.w800, letterSpacing: -1.5, height: 1.05)),
+    ),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Glow card (hover lift + border glow)
+// ══════════════════════════════════════════════════════════════════
+class _GlowCard extends StatefulWidget {
+  final Widget child;
+  final Color glowColor;
+  final EdgeInsets padding;
+  final double radius;
+  const _GlowCard({required this.child,
+      this.glowColor = kIndigo,
+      this.padding   = const EdgeInsets.all(24),
+      this.radius    = 20});
+  @override
+  State<_GlowCard> createState() => _GlowCardState();
+}
+class _GlowCardState extends State<_GlowCard> {
+  bool _hovered = false;
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _hovered = true),
+    onExit:  (_) => setState(() => _hovered = false),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+      transform: _hovered
+          ? (Matrix4.identity()..translate(0.0, -6.0))
+          : Matrix4.identity(),
+      padding: widget.padding,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(widget.radius),
+        color: kCard,
+        border: Border.all(
+          color: _hovered
+              ? widget.glowColor.withOpacity(0.55)
+              : kBorder.withOpacity(0.6),
+        ),
+        gradient: LinearGradient(
+          colors: [
+            widget.glowColor.withOpacity(_hovered ? 0.12 : 0.04),
+            kCard,
+          ],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: widget.glowColor.withOpacity(_hovered ? 0.28 : 0.06),
+            blurRadius: _hovered ? 36 : 14,
+            spreadRadius: _hovered ? 2 : 0,
+          ),
+          BoxShadow(color: Colors.black.withOpacity(0.45), blurRadius: 16, offset: const Offset(0, 8)),
+        ],
+      ),
+      child: widget.child,
+    ),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Hover button
+// ══════════════════════════════════════════════════════════════════
+class _HoverBtn extends StatefulWidget {
+  final Widget child;
+  final Color color;
+  final VoidCallback onTap;
+  final bool ghost;
+  final bool small;
+  const _HoverBtn({required this.child, required this.color,
+      required this.onTap, this.ghost = false, this.small = false});
+  @override
+  State<_HoverBtn> createState() => _HoverBtnState();
+}
+class _HoverBtnState extends State<_HoverBtn> {
+  bool _h = false;
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    cursor: SystemMouseCursors.click,
+    onEnter: (_) => setState(() => _h = true),
+    onExit:  (_) => setState(() => _h = false),
+    child: GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        transform: _h ? (Matrix4.identity()..translate(0.0, -2.0)) : Matrix4.identity(),
+        padding: widget.small
+            ? const EdgeInsets.symmetric(horizontal: 16, vertical: 8)
+            : const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: widget.ghost ? null : LinearGradient(
+            colors: _h
+                ? [widget.color, widget.color.withOpacity(0.7)]
+                : [widget.color.withOpacity(0.9), widget.color.withOpacity(0.6)],
+            begin: Alignment.topLeft, end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(30),
+          border: widget.ghost
+              ? Border.all(color: _h ? kBorder : kBorder.withOpacity(0.5))
+              : null,
+          boxShadow: widget.ghost ? [] : [
+            BoxShadow(
+              color: widget.color.withOpacity(_h ? 0.45 : 0.2),
+              blurRadius: _h ? 20 : 8, spreadRadius: _h ? 2 : 0,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: widget.child,
+      ),
+    ),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Nav item
+// ══════════════════════════════════════════════════════════════════
+class _NavItem extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  const _NavItem(this.label, this.onTap);
+  @override
+  State<_NavItem> createState() => _NavItemState();
+}
+class _NavItemState extends State<_NavItem> {
+  bool _h = false;
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    cursor: SystemMouseCursors.click,
+    onEnter: (_) => setState(() => _h = true),
+    onExit:  (_) => setState(() => _h = false),
+    child: GestureDetector(
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: _h ? kIndigo.withOpacity(0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(widget.label, style: GoogleFonts.plusJakartaSans(
+            color: _h ? kText : kTextMid, fontSize: 14, fontWeight: FontWeight.w500)),
+      ),
+    ),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Animated logo
+// ══════════════════════════════════════════════════════════════════
+class _AnimLogo extends StatefulWidget {
+  @override
+  State<_AnimLogo> createState() => _AnimLogoState();
+}
+class _AnimLogoState extends State<_AnimLogo> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat();
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _ctrl,
+    builder: (_, __) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [kIndigo, kCyan, kViolet, kIndigo],
+          stops: [0, 0.3 + _ctrl.value * 0.4, 0.7 + _ctrl.value * 0.3, 1],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [BoxShadow(color: kIndigo.withOpacity(0.4), blurRadius: 14, spreadRadius: 1)],
+      ),
+      child: Text('PJ', style: GoogleFonts.plusJakartaSans(
+          color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
+    ),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Rotating ring avatar
+// ══════════════════════════════════════════════════════════════════
+class _RingAvatar extends StatefulWidget {
+  @override
+  State<_RingAvatar> createState() => _RingAvatarState();
+}
+class _RingAvatarState extends State<_RingAvatar> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat();
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 280, height: 280,
+    child: Stack(alignment: Alignment.center, children: [
+      // Rotating gradient ring
+      AnimatedBuilder(
+        animation: _ctrl,
+        builder: (_, __) => Transform.rotate(
+          angle: _ctrl.value * 2 * math.pi,
+          child: Container(width: 260, height: 260,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: SweepGradient(colors: [kIndigo, kCyan, kViolet, kPink, kIndigo]),
+            ),
+          ),
+        ),
+      ),
+      // Dark gap ring
+      Container(width: 248, height: 248,
+          decoration: const BoxDecoration(shape: BoxShape.circle, color: kBg)),
+      // Photo
+      Container(width: 236, height: 236,
+        decoration: BoxDecoration(shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: kIndigo.withOpacity(0.4), blurRadius: 30, spreadRadius: 4)]),
+        child: CircleAvatar(radius: 118,
+            backgroundImage: const AssetImage('assets/profile.jpeg'),
+            backgroundColor: kSurface),
+      ),
+      // Orbiting dot 1
+      AnimatedBuilder(animation: _ctrl, builder: (_, __) {
+        final a = _ctrl.value * 2 * math.pi;
+        return Transform.translate(
+          offset: Offset(math.cos(a) * 130, math.sin(a) * 130),
+          child: Container(width: 14, height: 14,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: kCyan,
+              boxShadow: [BoxShadow(color: kCyan.withOpacity(0.8), blurRadius: 10, spreadRadius: 2)])),
+        );
+      }),
+      // Orbiting dot 2
+      AnimatedBuilder(animation: _ctrl, builder: (_, __) {
+        final a = (_ctrl.value + 0.5) * 2 * math.pi;
+        return Transform.translate(
+          offset: Offset(math.cos(a) * 130, math.sin(a) * 130),
+          child: Container(width: 10, height: 10,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: kPink,
+              boxShadow: [BoxShadow(color: kPink.withOpacity(0.8), blurRadius: 8, spreadRadius: 2)])),
+        );
+      }),
+    ]),
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Project card (animated hover)
+// ══════════════════════════════════════════════════════════════════
+class _ProjectCard extends StatefulWidget {
+  final _ProjData data;
+  final Future<void> Function(String) onOpen;
+  const _ProjectCard({required this.data, required this.onOpen});
+  @override
+  State<_ProjectCard> createState() => _ProjectCardState();
+}
+class _ProjectCardState extends State<_ProjectCard> {
+  bool _h = false;
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.data;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _h = true),
+      onExit:  (_) => setState(() => _h = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+        transform: _h
+            ? (Matrix4.identity()..translate(0.0, -8.0)..scale(1.015))
+            : Matrix4.identity(),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: p.color.withOpacity(_h ? 0.38 : 0.08),
+              blurRadius: _h ? 44 : 16,
+              spreadRadius: _h ? 4 : 0,
+              offset: const Offset(0, 12),
+            ),
+            BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, offset: const Offset(0, 8)),
+          ],
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: kCard,
+            border: Border.all(
+              color: _h ? p.color.withOpacity(0.55) : kBorder.withOpacity(0.5),
+            ),
+            gradient: LinearGradient(
+              colors: [p.color.withOpacity(_h ? 0.13 : 0.04), kCard, kCard],
+              begin: Alignment.topLeft, end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Header row
+            Row(children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [p.color.withOpacity(_h ? 0.35 : 0.2), p.color.withOpacity(0.05)],
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: p.color.withOpacity(0.4)),
+                  boxShadow: _h
+                      ? [BoxShadow(color: p.color.withOpacity(0.35), blurRadius: 14)]
+                      : [],
+                ),
+                child: Icon(p.icon, color: p.color, size: 22),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => widget.onOpen(p.url),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _h ? p.color.withOpacity(0.15) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: p.color.withOpacity(_h ? 0.55 : 0.2)),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    FaIcon(FontAwesomeIcons.github, color: p.color, size: 13),
+                    const SizedBox(width: 5),
+                    Text('Code', style: GoogleFonts.plusJakartaSans(
+                        color: p.color, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 18),
+            Text(p.title, style: GoogleFonts.plusJakartaSans(
+                color: kText, fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+            const SizedBox(height: 8),
+            Text(p.desc, style: GoogleFonts.plusJakartaSans(
+                color: kTextMid, fontSize: 13, height: 1.65)),
+            const SizedBox(height: 16),
+            Wrap(spacing: 6, runSpacing: 6,
+              children: p.tags.map((t) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [p.color.withOpacity(0.18), p.color.withOpacity(0.04)]),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: p.color.withOpacity(0.35)),
+                ),
+                child: Text(t, style: GoogleFonts.plusJakartaSans(
+                    color: p.color, fontSize: 11, fontWeight: FontWeight.w700)),
+              )).toList(),
+            ),
+          ]),
+        ),
+      ),
     );
   }
 }
 
-class PortfolioHomePage extends StatefulWidget {
-  const PortfolioHomePage({super.key});
-
+// ══════════════════════════════════════════════════════════════════
+//  Skill chip (hover glow)
+// ══════════════════════════════════════════════════════════════════
+class _SkillChip extends StatefulWidget {
+  final _Skill s;
+  final Color color;
+  const _SkillChip({required this.s, required this.color});
   @override
-  State<PortfolioHomePage> createState() => _PortfolioHomePageState();
+  State<_SkillChip> createState() => _SkillChipState();
+}
+class _SkillChipState extends State<_SkillChip> {
+  bool _h = false;
+  Widget _fa(IconData ic, Color c, double sz) {
+    if (ic == FontAwesomeIcons.gitAlt) return FaIcon(ic, color: c, size: sz);
+    return Icon(ic, color: c, size: sz);
+  }
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _h = true),
+    onExit:  (_) => setState(() => _h = false),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      transform: _h ? (Matrix4.identity()..translate(0.0, -3.0)) : Matrix4.identity(),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: _h
+            ? [widget.color.withOpacity(0.2), widget.color.withOpacity(0.06)]
+            : [kSurface, kSurface]),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: _h ? widget.color.withOpacity(0.55) : kBorder),
+        boxShadow: _h
+            ? [BoxShadow(color: widget.color.withOpacity(0.22), blurRadius: 14)]
+            : [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 6)],
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        _fa(widget.s.icon, _h ? widget.color : kTextMid, 14),
+        const SizedBox(width: 8),
+        Text(widget.s.name, style: GoogleFonts.plusJakartaSans(
+            color: _h ? kText : kTextMid, fontSize: 13, fontWeight: FontWeight.w500)),
+      ]),
+    ),
+  );
 }
 
-class _PortfolioHomePageState extends State<PortfolioHomePage> {
+// ══════════════════════════════════════════════════════════════════
+//  MAIN PAGE
+// ══════════════════════════════════════════════════════════════════
+class PortfolioPage extends StatefulWidget {
+  const PortfolioPage({super.key});
+  @override
+  State<PortfolioPage> createState() => _PortfolioPageState();
+}
 
+class _PortfolioPageState extends State<PortfolioPage> {
+  final _scroll = ScrollController();
+  bool _scrolled = false;
 
+  final _heroKey    = GlobalKey();
+  final _aboutKey   = GlobalKey();
+  final _expKey     = GlobalKey();
+  final _projKey    = GlobalKey();
+  final _skillsKey  = GlobalKey();
+  final _eduKey     = GlobalKey();
+  final _contactKey = GlobalKey();
 
-// Skill Item Widget
-Widget _skillItem(IconData icon, String skill) {
-  return Row(
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() {
+      final s = _scroll.offset > 60;
+      if (s != _scrolled) setState(() => _scrolled = s);
+    });
+  }
+
+  @override
+  void dispose() { _scroll.dispose(); super.dispose(); }
+
+  void _to(GlobalKey k) {
+    final c = k.currentContext;
+    if (c != null) Scrollable.ensureVisible(c,
+        duration: const Duration(milliseconds: 700), curve: Curves.easeInOutCubic);
+  }
+
+  Future<void> _open(String url) async {
+    final u = Uri.parse(url);
+    if (await canLaunchUrl(u)) await launchUrl(u, mode: LaunchMode.externalApplication);
+  }
+
+  Widget _fa(IconData ic, Color c, double sz) {
+    if (ic == FontAwesomeIcons.gitAlt || ic == FontAwesomeIcons.github || ic == FontAwesomeIcons.linkedin)
+      return FaIcon(ic, color: c, size: sz);
+    return Icon(ic, color: c, size: sz);
+  }
+
+  Widget _iconBox(IconData ic, Color c, {double size = 18}) => Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(colors: [c.withOpacity(0.25), c.withOpacity(0.06)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: c.withOpacity(0.3)),
+    ),
+    child: _fa(ic, c, size),
+  );
+
+  Widget _secTitle(String t, {Color accent = kIndigo}) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Icon(icon, size: 24, color: Colors.blueAccent),
-      const SizedBox(width: 10),
-      Text(
-        skill,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: Colors.black87,
+      Row(children: [
+        Container(width: 4, height: 34,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [accent, kCyan],
+                begin: Alignment.topCenter, end: Alignment.bottomCenter),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Text(t, style: GoogleFonts.plusJakartaSans(
+            color: kText, fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -1)),
+      ]),
+      const SizedBox(height: 6),
+      Padding(
+        padding: const EdgeInsets.only(left: 18),
+        child: Container(width: 60, height: 2,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [accent.withOpacity(0.6), Colors.transparent]),
+            borderRadius: BorderRadius.circular(1),
+          ),
         ),
       ),
     ],
   );
-}
 
-  // Add this function above your build method (outside the widget tree)
-Widget _highlightCard(String title, String description, IconData icon) {
-  return Container(
-    padding: const EdgeInsets.all(20),
-    margin: const EdgeInsets.only(bottom: 18),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.05),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.blueAccent.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 26, color: Colors.blueAccent),
-        ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
+  EdgeInsets _pad(bool mob) =>
+      EdgeInsets.symmetric(horizontal: mob ? 20 : 80, vertical: mob ? 52 : 80);
 
-Widget _buildSocialIcon(IconData icon, String url) {
-  return InkWell(
-    onTap: () async {
-      final Uri uri = Uri.parse(url);
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        throw 'Could not launch $url';
-      }
-    },
-    child: MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: FaIcon(icon, color: Colors.white, size: 28),
-    ),
-  );
-}
-
-
-
-
-Widget _buildProjectCard({
-  required String title,
-  required String description,
-  required String githubUrl,
-  required IconData icon,
-  required Color color,
-}) {
-  return AnimatedContainer(
-    duration: const Duration(milliseconds: 400),
-    curve: Curves.easeInOut,
-    width: 280,
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Colors.white, Colors.blue.shade50],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(15),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.05),
-          blurRadius: 8,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 32, color: color),
-        const SizedBox(height: 10),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.indigo,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          description,
-          style: const TextStyle(fontSize: 15, height: 1.4, color: Colors.black87),
-        ),
-        const SizedBox(height: 12),
-        InkWell(
-          onTap: () => launchUrl(Uri.parse(githubUrl)),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.code, size: 20, color: Colors.blueAccent),
-              SizedBox(width: 6),
-              Text(
-                "View on GitHub",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.blueAccent,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-// Inline social icon button widget
-Widget _socialIconButton({
-  required IconData icon,
-  required String tooltip,
-  required String url,
-  required Color color,
-}) {
-  return InkWell(
-    onTap: () async {
-      final Uri uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    },
-    borderRadius: BorderRadius.circular(50),
-    child: Tooltip(
-      message: tooltip,
-      child: CircleAvatar(
-        radius: 24,
-        backgroundColor: Colors.white.withOpacity(0.1),
-        child: Icon(icon, color: color, size: 26),
-      ),
-    ),
-  );
-}
-
-
-  final ScrollController _scrollController = ScrollController();
-
-  final GlobalKey _aboutKey = GlobalKey();
-  final GlobalKey _projectsKey = GlobalKey();
-  final GlobalKey _experienceKey = GlobalKey();
-  final GlobalKey _contactKey = GlobalKey();
-  final _skillsKey = GlobalKey();
-final _educationKey = GlobalKey();
-
-
-  void scrollToSection(GlobalKey key) {
-    final context = key.currentContext;
-    if (context != null) {
-      Scrollable.ensureVisible(
-        context,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
+  Widget _glowBtn(String lbl, IconData ic, VoidCallback fn, {Color c = kIndigo}) =>
+      _HoverBtn(color: c, onTap: fn,
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          _fa(ic, Colors.white, 15),
+          const SizedBox(width: 10),
+          Text(lbl, style: GoogleFonts.plusJakartaSans(
+              color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700)),
+        ]),
       );
-    }
-  }
 
+  Widget _ghostBtn(String lbl, IconData ic, VoidCallback fn) =>
+      _HoverBtn(color: kIndigo, onTap: fn, ghost: true,
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          _fa(ic, kTextMid, 15),
+          const SizedBox(width: 10),
+          Text(lbl, style: GoogleFonts.plusJakartaSans(
+              color: kTextMid, fontSize: 14, fontWeight: FontWeight.w600)),
+        ]),
+      );
 
-
-  bool _animateAbout = false;
-
-void _checkAboutVisibility() {
-  if (!_animateAbout) {
-    final RenderBox? aboutBox =
-        _aboutKey.currentContext?.findRenderObject() as RenderBox?;
-    if (aboutBox != null) {
-      final position = aboutBox.localToGlobal(Offset.zero).dy;
-      final screenHeight = MediaQuery.of(context).size.height;
-
-      if (position < screenHeight * 0.7) {
-        setState(() {
-          _animateAbout = true;
-        });
-      }
-    }
-  }
-}
-
-@override
-void initState() {
-  super.initState();
-  _scrollController.addListener(_checkAboutVisibility);
-}
-
-@override
-void dispose() {
-  _scrollController.dispose();
-  super.dispose();
-}
-
-
+  // ════════════════ BUILD ══════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
+    final w   = MediaQuery.of(context).size.width;
+    final mob = w < 700;
+
+    final navItems = [
+      ('About', _aboutKey), ('Experience', _expKey),
+      ('Projects', _projKey), ('Skills', _skillsKey),
+      ('Education', _eduKey), ('Contact', _contactKey),
+    ];
+
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const Spacer(),
-            TextButton(
-              onPressed: () => scrollToSection(_aboutKey),
-              child: const Text("About", style: TextStyle(color: Colors.black)),
-            ),
-             TextButton(
-              onPressed: () => scrollToSection(_experienceKey),
-              child: const Text("Experience", style: TextStyle(color: Colors.black)),
-            ),
-            TextButton(
-              onPressed: () => scrollToSection(_projectsKey),
-              child: const Text("Projects", style: TextStyle(color: Colors.black)),
-            ),
-
-            TextButton(
-  onPressed: () => scrollToSection(_skillsKey),
-  child: const Text("Skills",style: TextStyle(color: Colors.black)),
-),
-TextButton(
-  onPressed: () => scrollToSection(_educationKey),
-  child: const Text("Education",style: TextStyle(color: Colors.black)),
-),
-           
-            TextButton(
-              onPressed: () => scrollToSection(_contactKey),
-              child: const Text("Contact", style: TextStyle(color: Colors.black)),
-            ),
-          ],
+      backgroundColor: kBg,
+      extendBodyBehindAppBar: true,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          decoration: BoxDecoration(
+            color: _scrolled ? kSurface.withOpacity(0.92) : Colors.transparent,
+            border: _scrolled ? Border(bottom: BorderSide(color: kBorder.withOpacity(0.8))) : null,
+            boxShadow: _scrolled
+                ? [BoxShadow(color: kIndigo.withOpacity(0.08), blurRadius: 30)]
+                : [],
+          ),
+          child: SafeArea(child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: mob ? 20 : 52),
+            child: Row(children: [
+              _AnimLogo(),
+              const Spacer(),
+              if (!mob) ...navItems.map((e) => _NavItem(e.$1, () => _to(e.$2))),
+              if (!mob) const SizedBox(width: 16),
+              if (!mob)
+                _HoverBtn(color: kIndigo, onTap: () => _open(
+                    'https://drive.google.com/file/d/1Fnc0uhd03yXKEj46LbF-Rrf6wsM2geXL/view?usp=drive_link'),
+                  small: true,
+                  child: Text('Resume', style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                ),
+              if (mob)
+                PopupMenuButton<int>(
+                  color: kSurface,
+                  icon: const Icon(Icons.menu_rounded, color: kText),
+                  itemBuilder: (_) => navItems.asMap().entries.map((e) =>
+                    PopupMenuItem(value: e.key, onTap: () => _to(e.value.$2),
+                      child: Text(e.value.$1, style: GoogleFonts.plusJakartaSans(
+                          color: kText, fontSize: 14)))).toList(),
+                ),
+            ]),
+          )),
         ),
       ),
-      body: SingleChildScrollView(
-        controller: _scrollController,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Home Section
-  Container(
-  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
-  margin: const EdgeInsets.all(20),
-  width: double.infinity,
-  decoration: BoxDecoration(
-    gradient: const LinearGradient(
-      colors: [Color.fromARGB(154, 1, 48, 40), Color.fromARGB(255, 113, 211, 233)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
+      body: Stack(children: [
+        // Particle canvas
+        const Positioned.fill(child: _ParticleBg()),
+        // Ambient blobs
+        Positioned(top: -200, right: -200,
+          child: Container(width: 600, height: 600,
+            decoration: BoxDecoration(shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [kIndigo.withOpacity(0.12), Colors.transparent])))),
+        Positioned(top: 400, left: -150,
+          child: Container(width: 500, height: 500,
+            decoration: BoxDecoration(shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [kCyan.withOpacity(0.07), Colors.transparent])))),
+        SingleChildScrollView(
+          controller: _scroll,
+          child: Column(children: [
+            _buildHero(mob),
+            _buildAbout(mob),
+            _buildExperience(mob),
+            _buildProjects(mob),
+            _buildSkills(mob),
+            _buildEducation(mob),
+            _buildContact(mob),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  // ─── HERO ──────────────────────────────────────────────────────
+  Widget _buildHero(bool mob) => Container(
+    key: _heroKey,
+    width: double.infinity,
+    constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height),
+    child: Padding(
+      padding: EdgeInsets.fromLTRB(mob ? 20 : 80, mob ? 110 : 130, mob ? 20 : 80, mob ? 60 : 80),
+      child: mob ? _heroMob() : _heroDesk(),
     ),
-    borderRadius: BorderRadius.circular(25),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withOpacity(0.1),
-        blurRadius: 20,
-        offset: const Offset(0, 10),
+  );
+
+  Widget _heroDesk() => Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+    Expanded(flex: 6, child: _heroText()),
+    const SizedBox(width: 60),
+    Expanded(flex: 4, child: Center(child: FadeSlideIn(
+      delay: const Duration(milliseconds: 500),
+      from: const Offset(30, 0),
+      child: _RingAvatar()))),
+  ]);
+
+  Widget _heroMob() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Center(child: FadeSlideIn(delay: const Duration(milliseconds: 200), child: _RingAvatar())),
+    const SizedBox(height: 36),
+    _heroText(),
+  ]);
+
+  Widget _heroText() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    FadeSlideIn(delay: const Duration(milliseconds: 100), child: _hackBadge()),
+    const SizedBox(height: 16),
+    FadeSlideIn(delay: const Duration(milliseconds: 200), child: _availPill()),
+    const SizedBox(height: 22),
+    FadeSlideIn(delay: const Duration(milliseconds: 300),
+        child: _ShimmerText('Prajakta\nGanesh Jadhav', fontSize: 52)),
+    const SizedBox(height: 14),
+    FadeSlideIn(delay: const Duration(milliseconds: 380),
+      child: Text('Flutter Dev  ·  Java Dev  ·  Tech Enthusiast',
+          style: GoogleFonts.plusJakartaSans(
+              color: kCyan, fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+    ),
+    const SizedBox(height: 18),
+    FadeSlideIn(delay: const Duration(milliseconds: 440),
+      child: Text(
+        'Final-year CSE student crafting impactful cross-platform apps '
+        'with Flutter, Firebase, AI/ML integrations and polished UI/UX.',
+        style: GoogleFonts.plusJakartaSans(color: kTextMid, fontSize: 16, height: 1.75),
       ),
-    ],
-  ),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        children: [
-          CircleAvatar(
-            backgroundImage: const AssetImage('assets/profile.jpeg'),
-            radius: 55,
-            backgroundColor: Colors.white,
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Prajakta Ganesh Jadhav",
-                  style: GoogleFonts.quicksand(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  "Flutter Developer | Java Developer | Tech Enthusiast",
-                  style: GoogleFonts.nunito(
-                    color: Colors.white70,
-                    fontSize: 18,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    ),
+    const SizedBox(height: 34),
+    FadeSlideIn(delay: const Duration(milliseconds: 530),
+      child: Wrap(spacing: 14, runSpacing: 12, children: [
+        _glowBtn('View Projects', Icons.rocket_launch_outlined, () => _to(_projKey)),
+        _ghostBtn('Download Resume', Icons.download_outlined, () => _open(
+            'https://drive.google.com/file/d/1Fnc0uhd03yXKEj46LbF-Rrf6wsM2geXL/view?usp=drive_link')),
+      ]),
+    ),
+    const SizedBox(height: 28),
+    FadeSlideIn(delay: const Duration(milliseconds: 620),
+      child: Wrap(spacing: 10, runSpacing: 10, children: [
+        _socialChip(FontAwesomeIcons.github,   'GitHub',   'https://github.com/prajaktajadhav177'),
+        _socialChip(FontAwesomeIcons.linkedin, 'LinkedIn', 'https://www.linkedin.com/in/prajakta-jadhav-37484a260/'),
+        _socialChip(Icons.mail_outline,        'Email',    'mailto:prajaktajadhav177@gmail.com'),
+      ]),
+    ),
+  ]);
+
+  Widget _hackBadge() => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(colors: [kAmber.withOpacity(0.15), kPink.withOpacity(0.08)]),
+      borderRadius: BorderRadius.circular(30),
+      border: Border.all(color: kAmber.withOpacity(0.4)),
+      boxShadow: [BoxShadow(color: kAmber.withOpacity(0.12), blurRadius: 12)],
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      const Text('🏆', style: TextStyle(fontSize: 14)),
+      const SizedBox(width: 8),
+      Flexible(child: Text('Elite Her Hackathon Finalist · Top 200 / 7000+ teams',
+          style: GoogleFonts.plusJakartaSans(
+              color: const Color(0xFFFBBF24), fontSize: 12, fontWeight: FontWeight.w600),
+          overflow: TextOverflow.ellipsis, maxLines: 2)),
+    ]),
+  );
+
+  Widget _availPill() => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+    decoration: BoxDecoration(
+      color: kGreen.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(30),
+      border: Border.all(color: kGreen.withOpacity(0.3)),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      const _PulseDot(color: kGreen),
+      const SizedBox(width: 9),
+      Text('Available for opportunities',
+          style: GoogleFonts.plusJakartaSans(color: kGreen, fontSize: 13, fontWeight: FontWeight.w500)),
+    ]),
+  );
+
+  Widget _socialChip(IconData icon, String label, String url) => InkWell(
+    onTap: () => _open(url),
+    borderRadius: BorderRadius.circular(30),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: kSurface.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: kBorder.withOpacity(0.8)),
       ),
-      const SizedBox(height: 30),
-      Text(
-  "Computer Science Engineering student skilled in Flutter, Firebase, SQL, MongoDB, Java, C++, Git/GitHub, Sqflite, and SharedPreferences. Passionate about building cross-platform apps with secure authentication, clean UI/UX, optimized performance, and seamless user experience. Strong problem-solver focused on writing maintainable, efficient, and scalable code.",
-   style: GoogleFonts.nunito(
-          color: Colors.white,
-          fontSize: 18,
-          height: 1.6,
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        _fa(icon, kTextMid, 14),
+        const SizedBox(width: 7),
+        Text(label, style: GoogleFonts.plusJakartaSans(color: kTextMid, fontSize: 13)),
+      ]),
+    ),
+  );
+
+  // ─── ABOUT ─────────────────────────────────────────────────────
+  Widget _buildAbout(bool mob) {
+    final cards = [
+      (Icons.phone_android_outlined,  kIndigo,  'Mobile App Dev',  'Flutter & Firebase — smooth, scalable cross-platform apps.'),
+      (Icons.storage_outlined,         kCyan,   'Backend & DB',     'Firebase, SQL, MongoDB & REST APIs for reliable data.'),
+      (Icons.design_services_outlined, kViolet, 'UI/UX Design',     'Clean, responsive, delightful interfaces.'),
+    ];
+
+    return Container(
+      key: _aboutKey,
+      width: double.infinity,
+      padding: _pad(mob),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [kBg, kSurface],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
         ),
       ),
-      const SizedBox(height: 25),
-  
-       const SizedBox(height: 30),
-  
-      // Buttons
-      Row(
-        children: [
-          ElevatedButton.icon(
-            onPressed: () => scrollToSection(_projectsKey),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF2193b0),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              elevation: 8,
-            ),
-            icon: const Icon(Icons.arrow_forward),
-            label: Text(
-              "View Projects",
-              style: GoogleFonts.quicksand(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
-          const SizedBox(width: 20),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final Uri url = Uri.parse(
-                  "https://drive.google.com/file/d/1Fnc0uhd03yXKEj46LbF-Rrf6wsM2geXL/view?usp=drive_link");
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              }
-            },
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.white, width: 1.5),
-              foregroundColor: Colors.white,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-            ),
-            icon: const Icon(Icons.attach_file),
-            label: Text(
-              "Resume",
-              style: GoogleFonts.quicksand(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 25),
-  
-      Row(
-        children: [
-          Tooltip(
-      message: "GitHub",
-      child: _buildSocialIcon(
-        FontAwesomeIcons.github,
-        "https://github.com/prajaktajadhav177",
-      ),
-    ),
-  
-    const SizedBox(width: 16),
-    Tooltip(
-      message: "LinkedIn",
-      child: _buildSocialIcon(
-        FontAwesomeIcons.linkedin,
-        "https://www.linkedin.com/in/prajakta-jadhav-37484a260/",
-      ),
-    ),
-          
-   const SizedBox(width: 13),
-    Tooltip(
-      message: "Email",
-      child: IconButton(
-        tooltip: "Email",
-        onPressed: () async {
-          final Uri email = Uri(
-            scheme: 'mailto',
-            path: 'prajaktajadhav177@gmail.com',
-            query: 'subject=Hello Prajakta!',
-          );
-          if (!await launchUrl(email)) throw 'Could not launch $email';
-        },
-        icon: const Icon(Icons.mail,
-            color: Colors.white, size: 32),
-      ),
-    ),
-          
-      
-        ],
-      ),
-    ],
-  ),
-),
-              // About Section
-  Container(
-  key: _aboutKey,
-  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 70),
-  width: double.infinity,
-  decoration: const BoxDecoration(
-    gradient: LinearGradient(
-      colors: [Color(0xFFF9FAFB), Color(0xFFEFF3F6)], // subtle light gradient
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-    ),
-  ),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      // Section Title
-      Row(
-        children: [
-          Container(
-            width: 6,
-            height: 30,
-            decoration: BoxDecoration(
-              color: Colors.blueAccent,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            "About Me",
-            style: TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 40),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        FadeSlideIn(child: _secTitle('About Me')),
+        const SizedBox(height: 48),
+        mob
+          ? Column(children: [
+              FadeSlideIn(child: _whoCard()),
+              const SizedBox(height: 16),
+              ...cards.asMap().entries.map((e) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: FadeSlideIn(delay: Duration(milliseconds: 100 + e.key * 80),
+                    child: _highlightCard(e.value.$1, e.value.$2, e.value.$3, e.value.$4)))),
+            ])
+          : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(flex: 5, child: FadeSlideIn(child: _whoCard())),
+              const SizedBox(width: 24),
+              Expanded(flex: 5, child: Column(children: cards.asMap().entries.map((e) =>
+                Padding(padding: const EdgeInsets.only(bottom: 14),
+                  child: FadeSlideIn(delay: Duration(milliseconds: 100 + e.key * 80),
+                    child: _highlightCard(e.value.$1, e.value.$2, e.value.$3, e.value.$4)))).toList())),
+            ]),
+      ]),
+    );
+  }
 
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left Side - About Text
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.all(25),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "Who I Am",
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blueAccent,
-                    ),
-                  ),
-                  SizedBox(height: 15),
-                  Text(
-"I am a final-year Computer Science student passionate about building impactful mobile and web applications. With 6 months of hands-on internship experience, I enjoy creating smooth, engaging, and visually appealing user experiences while continuously improving my technical skills in Flutter, Firebase, SQL, and other technologies.",
-                    style: TextStyle(
-                      fontSize: 16,
-                      height: 1.6,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 50),
-
-          // Right Side - Highlights
-          Expanded(
-            flex: 1,
-            child: Column(
-              children: [
-                _highlightCard(
-                  "Mobile App Development",
-                  "Specializing in Flutter & Firebase, building smooth, scalable cross-platform apps.",
-                  Icons.phone_android,
-                ),
-                _highlightCard(
-                  "Backend & Database Skills",
-                  "Experience with Firebase, SQL, and REST APIs for reliable data management.",
-                  Icons.storage,
-                ),
-                _highlightCard(
-                  "UI/UX Focus",
-                  "Clean, user-friendly, and responsive interfaces with attention to detail.",
-                  Icons.design_services,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ],
-  ),
-),
-
-
-        
-// Experience Section
-Container(
-  key: _experienceKey,
-  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 60),
-  width: double.infinity,
-  decoration: BoxDecoration(
-    gradient: LinearGradient(
-      colors: [Colors.blue.shade50, Colors.white],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    ),
-  ),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      // Title with divider
-      Row(
-        children:[
-            Container(
-            width: 6,
-            height: 30,
-            decoration: BoxDecoration(
-              color: Colors.blueAccent,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            "Experience",
-            style: TextStyle(
-              fontSize: 34,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-     
-      const SizedBox(height: 30),
-
-      // Experience Card 1
-      AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-        margin: const EdgeInsets.only(bottom: 20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.white, Colors.blue.shade50],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Icon(Icons.work_outline, size: 28, color: Colors.indigo),
-              SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Software Engineering Intern",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.indigo,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      "Intern Labs",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    Text(
-                      "28 Jun 2025 – 28 Sep 2025",
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.black54,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("✔ Working on cross-platform app development using Flutter & Dart."),
-                        Text("✔ Implementing clean UI/UX, Firebase integration, and state management."),
-                        Text("✔ Contributing to testing, debugging, and performance optimization."),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-
-      // Experience Card 2 (repeat structure)
-      AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
-        margin: const EdgeInsets.only(bottom: 20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.white, Colors.blue.shade50],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Icon(Icons.developer_mode, size: 28, color: Colors.indigo),
-              SizedBox(width: 15),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Flutter Developer Intern",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.indigo,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      "Incubators System Pvt. Ltd",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    Text(
-                      "1 Aug 2024 – 31 Oct 2024",
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.black54,
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("✔ Developed cross-platform mobile apps using Flutter & Dart."),
-                        Text("✔ Implemented animations, login screens, and Firebase authentication."),
-                        Text("✔ Worked with GitLab for collaborative development."),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ],
-  ),
-),
-
-
-
-// Projects Section
-Container(
-  key: _projectsKey,
-  width: double.infinity,
-  decoration: const BoxDecoration(
-    gradient: LinearGradient(
-      colors: [
-        Color(0xFFBBDEFB), // Medium-light blue
-        Color(0xFFE3F2FD), // Very light blue
-      ],
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-    ),
-  ),
-  padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 40),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      // Heading Row with Animated Bar
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: 50),
-            duration: const Duration(milliseconds: 900),
-            curve: Curves.easeOutBack,
-            builder: (context, value, child) {
-              return Container(
-                width: 6,
-                height: value,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Colors.blueAccent, Colors.lightBlue],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            "Projects",
-            style: TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              letterSpacing: 0.8,
-            ),
-          ),
-        ],
-      ),
-
-      // Underline Animation
-      const SizedBox(height: 8),
-      TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 120),
-        duration: const Duration(milliseconds: 700),
-        curve: Curves.easeOutCubic,
-        builder: (context, value, child) {
-          return Container(
-            height: 4,
-            width: value,
-            decoration: BoxDecoration(
-              color: Colors.blueAccent,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          );
-        },
-      ),
-
+  Widget _whoCard() => _GlowCard(glowColor: kIndigo,
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        _iconBox(Icons.person_outline, kIndigo),
+        const SizedBox(width: 12),
+        Text('Who I Am', style: GoogleFonts.plusJakartaSans(
+            color: kText, fontSize: 18, fontWeight: FontWeight.w700)),
+      ]),
       const SizedBox(height: 16),
-      const Text(
-        "Here are some of my highlighted works",
-        style: TextStyle(
-          fontSize: 18,
-          color: Colors.black54,
-          fontStyle: FontStyle.italic,
+      Text(
+        'Final-year Computer Science student passionate about building impactful '
+        'mobile and web applications. With 6 months of hands-on internship experience, '
+        'I love creating smooth, engaging, and visually rich user experiences while '
+        'sharpening my skills across Flutter, Firebase, SQL, and AI/ML.',
+        style: GoogleFonts.plusJakartaSans(color: kTextMid, fontSize: 14, height: 1.8),
+      ),
+      const SizedBox(height: 20),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        _statBadge('6+',  'Projects',   kIndigo),
+        _statBadge('6mo', 'Experience', kCyan),
+        _statBadge('9.8', 'SGPA',       kGreen),
+      ]),
+    ]),
+  );
+
+  Widget _statBadge(String num, String label, Color c) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(colors: [c.withOpacity(0.15), c.withOpacity(0.05)]),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: c.withOpacity(0.3)),
+    ),
+    child: Column(children: [
+      Text(num,   style: GoogleFonts.plusJakartaSans(color: c, fontSize: 20, fontWeight: FontWeight.w800)),
+      Text(label, style: GoogleFonts.plusJakartaSans(color: kTextMid, fontSize: 11, fontWeight: FontWeight.w500)),
+    ]),
+  );
+
+  Widget _highlightCard(IconData ic, Color c, String title, String desc) =>
+      _GlowCard(glowColor: c, padding: const EdgeInsets.all(18),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _iconBox(ic, c),
+          const SizedBox(width: 14),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: GoogleFonts.plusJakartaSans(
+                color: kText, fontSize: 15, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 5),
+            Text(desc, style: GoogleFonts.plusJakartaSans(
+                color: kTextMid, fontSize: 13, height: 1.5)),
+          ])),
+        ]),
+      );
+
+  // ─── EXPERIENCE ────────────────────────────────────────────────
+  Widget _buildExperience(bool mob) => Container(
+    key: _expKey,
+    width: double.infinity,
+    padding: _pad(mob),
+    color: kCardAlt,
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      FadeSlideIn(child: _secTitle('Experience', accent: kCyan)),
+      const SizedBox(height: 48),
+      FadeSlideIn(delay: const Duration(milliseconds: 100),
+        child: _expCard(Icons.work_outline, kIndigo, 'Software Engineering Intern',
+          'Intern Labs', 'Jun 2025 – Sep 2025', [
+          'Cross-platform app development using Flutter & Dart.',
+          'Implementing clean UI/UX, Firebase integration, and state management.',
+          'Contributing to testing, debugging, and performance optimization.',
+        ])),
+      const SizedBox(height: 20),
+      FadeSlideIn(delay: const Duration(milliseconds: 200),
+        child: _expCard(Icons.developer_mode_outlined, kTeal, 'Flutter Developer Intern',
+          'Incubators System Pvt. Ltd', 'Aug 2024 – Oct 2024', [
+          'Developed cross-platform mobile apps using Flutter & Dart.',
+          'Implemented animations, login screens, and Firebase authentication.',
+          'Worked with GitLab for collaborative development.',
+        ])),
+    ]),
+  );
+
+  Widget _expCard(IconData ic, Color c, String role, String company, String period, List<String> pts) =>
+      _GlowCard(glowColor: c,
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _iconBox(ic, c, size: 20),
+          const SizedBox(width: 18),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(role, style: GoogleFonts.plusJakartaSans(
+                color: kText, fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Wrap(spacing: 10, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              Text(company, style: GoogleFonts.plusJakartaSans(
+                  color: c, fontSize: 14, fontWeight: FontWeight.w600)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [c.withOpacity(0.2), c.withOpacity(0.05)]),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: c.withOpacity(0.35)),
+                ),
+                child: Text(period, style: GoogleFonts.plusJakartaSans(
+                    color: c, fontSize: 12, fontWeight: FontWeight.w500)),
+              ),
+            ]),
+            const SizedBox(height: 16),
+            ...pts.map((p) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Padding(padding: const EdgeInsets.only(top: 7),
+                  child: Container(width: 5, height: 5,
+                    decoration: BoxDecoration(color: c, shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: c.withOpacity(0.6), blurRadius: 4)]))),
+                const SizedBox(width: 12),
+                Expanded(child: Text(p, style: GoogleFonts.plusJakartaSans(
+                    color: kTextMid, fontSize: 14, height: 1.6))),
+              ]),
+            )),
+          ])),
+        ]),
+      );
+
+  // ─── PROJECTS ──────────────────────────────────────────────────
+  Widget _buildProjects(bool mob) {
+    final projects = [
+      _ProjData('RentRider',
+          'Vehicle booking app with Firebase auth, smooth UI and real-time booking management.',
+          'https://github.com/prajaktajadhav177/rent-rider',
+          Icons.directions_bike_outlined, kIndigo, ['Flutter', 'Firebase']),
+      _ProjData('SoulSync',
+          'Matrimony platform — profile matching, chat, video & voice calls with Firebase.',
+          'https://github.com/prajaktajadhav177/soulsync',
+          Icons.favorite_border, kPink, ['Flutter', 'Firebase']),
+      _ProjData('Expense Tracker',
+          'Track spending, set savings goals, and visualize budget analytics. Dark mode included.',
+          'https://github.com/prajaktajadhav177/web-app-expence-tracker',
+          Icons.account_balance_wallet_outlined, kGreen, ['Flutter', 'SQLite']),
+      _ProjData('ToDo App',
+          'Smart task manager with priorities, categories, and daily progress tracking.',
+          'https://github.com/prajaktajadhav177/Basic-todo-app',
+          Icons.check_circle_outline, kViolet, ['Flutter', 'SQLite']),
+      _ProjData('TruthLens AI',
+          'AI platform reducing unhealthy social comparison — reality scores on effort, authenticity & context, with chatbot for emotional awareness.',
+          'https://github.com/prajaktajadhav177',
+          Icons.remove_red_eye_outlined, kCyan,
+          ['Flutter', 'Firebase', 'Gemini API', 'Sentiment Analysis']),
+      _ProjData('PocketPilot',
+          'Smart expense tracker with categorization, interactive charts, dark mode & personalized budgeting.',
+          'https://github.com/prajaktajadhav177',
+          Icons.auto_graph_outlined, kAmber,
+          ['Flutter', 'SQLite', 'Sqflite', 'Charts']),
+      _ProjData('TaskFlow',
+          'Collaborative PM platform — Kanban boards, sprint planning, task assignment & real-time updates.',
+          'https://github.com/prajaktajadhav177',
+          Icons.dashboard_outlined, const Color(0xFF818CF8),
+          ['Flutter', 'Firebase', 'Real-time DB']),
+      _ProjData('DocShield',
+          'Intelligent document verification — OCR, authenticity checks, plagiarism detection & AI anomaly detection.',
+          'https://github.com/prajaktajadhav177',
+          Icons.verified_user_outlined, kRed,
+          ['Python', 'AI/ML', 'OCR', 'Firebase']),
+    ];
+
+    return Container(
+      key: _projKey,
+      width: double.infinity,
+      padding: _pad(mob),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [kSurface, kBg],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
         ),
       ),
-      const SizedBox(height: 40),
-
-      // Project Cards
-      Wrap(
-        spacing: 50,
-        runSpacing: 20,
-        alignment: WrapAlignment.center,
-        children: [
-          _buildProjectCard(
-            title: "RentRider",
-            description:
-                "Vehicle booking app with Firebase authentication, smooth UI, and booking management.",
-            githubUrl: "https://github.com/prajaktajadhav177/rent-rider",
-            icon: Icons.directions_bike,
-            color: Colors.blue,
-          ),
-          _buildProjectCard(
-            title: "SoulSync",
-            description:
-                "Matrimony app with profile matching, chat, video call , voice call and Firebase authentication.",
-            githubUrl: "https://github.com/prajaktajadhav177/soulsync",
-            icon: Icons.favorite,
-            color: Colors.pink,
-          ),
-          _buildProjectCard(
-            title: "Expense Tracker",
-            description:
-                "Track expenses, set savings goals, and view budget analytics with dark mode toggle.",
-            githubUrl:
-                "https://github.com/prajaktajadhav177/web-app-expence-tracker",
-            icon: Icons.attach_money,
-            color: Colors.green,
-          ),
-          _buildProjectCard(
-            title: "ToDo App",
-            description:
-                "A simple ToDo app to manage tasks, set priorities, and track daily progress efficiently.",
-            githubUrl: "https://github.com/prajaktajadhav177/Basic-todo-app",
-            icon: Icons.check_circle,
-            color: Colors.deepPurple,
-          ),
-        ],
-      ),
-    ],
-  ),
-),
-
-
-
-
-Container(
-  key: _skillsKey,
-  width: double.infinity,
-  padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-  color: const Color(0xFFF5F7FA),
-  child: Column(
-    children: [
- Row(
-        children: [
-          Container(
-                width: 6,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: Colors.blueAccent,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                "Skills",
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                  letterSpacing: 0.5,
-                ),
-              ),
-          const SizedBox(height: 30 ),
-          
-        ],
-      ),
-
-      Wrap(
-        
-        spacing: 20,
-        runSpacing: 20,
-        alignment: WrapAlignment.center,
-        children: List.generate(6, (index) {
-          final skills = [
-            {
-              "icon": Icons.flutter_dash,
-              "title": "Flutter & Dart",
-              "description": "Build cross-platform apps with beautiful UI & responsive design."
-            },
-            {
-              "icon": Icons.cloud,
-              "title": "Firebase",
-              "description": "Realtime database, auth, cloud functions & hosting."
-            },
-            {
-              "icon": Icons.storage,
-              "title": "SQL / MongoDB",
-              "description": "Efficient data storage, querying & database management."
-            },
-            {
-              "icon": Icons.merge_type,
-              "title": "Git & GitHub",
-              "description": "Version control and collaborative project management."
-            },
-            {
-              "icon": Icons.design_services,
-              "title": "UI/UX Design",
-              "description": "Design clean, intuitive & user-friendly interfaces."
-            },
-            {
-              "icon": Icons.code,
-              "title": "Java / C++",
-              "description": "Strong backend programming skills with OOP and algorithms."
-            },
-          ];
-      
-          bool isHovered = false;
-      
-          return StatefulBuilder(
-            builder: (context, setState) {
-              return MouseRegion(
-                onEnter: (_) => setState(() => isHovered = true),
-                onExit: (_) => setState(() => isHovered = false),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: isHovered ? 240 : 200,
-                  height: isHovered ? 240 : 200,
-                  padding: const EdgeInsets.all(16),
-                  transform: Matrix4.identity()..scale(isHovered ? 1.05 : 1.0),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isHovered
-                          ? [const Color.fromARGB(255, 174, 183, 234), const Color.fromARGB(255, 249, 246, 248)]
-                          : [Colors.white, Colors.grey.shade100],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: isHovered ? 20 : 10,
-                        spreadRadius: 2,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                    border: isHovered
-                        ? Border.all(color: const Color.fromARGB(255, 31, 100, 219), width: 2)
-                        : null,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(skills[index]["icon"] as IconData, size: 40, color: Colors.blueAccent),
-                      const SizedBox(height: 12),
-                      Text(
-                        skills[index]["title"] as String,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (isHovered)
-                        Text(
-                          skills[index]["description"] as String,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            },
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        FadeSlideIn(child: _secTitle('Projects', accent: kViolet)),
+        const SizedBox(height: 8),
+        FadeSlideIn(delay: const Duration(milliseconds: 80),
+            child: Text('Highlighted works & side projects',
+                style: GoogleFonts.plusJakartaSans(color: kTextDim, fontSize: 15))),
+        const SizedBox(height: 48),
+        LayoutBuilder(builder: (_, bc) {
+          final cols = bc.maxWidth > 900 ? 3 : bc.maxWidth > 560 ? 2 : 1;
+          final cw = (bc.maxWidth - (cols - 1) * 20) / cols;
+          return Wrap(spacing: 20, runSpacing: 20,
+            children: projects.asMap().entries.map((e) =>
+              FadeSlideIn(
+                delay: Duration(milliseconds: 60 * e.key),
+                child: SizedBox(width: cw,
+                    child: _ProjectCard(data: e.value, onOpen: _open)),
+              )).toList(),
           );
         }),
-      ),
-    ],
-  ),
-),
-
-
-
-
-
-// Education Section
-Container(
-  key: _educationKey,
-  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 60),
-  color: Colors.grey[50],
-  width: double.infinity,
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        "Education",
-        style: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.2,
-        ),
-      ),
-      const SizedBox(height: 30),
-
-      Container(
-        padding: const EdgeInsets.all(25),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "B.E. in Computer Science & Engineering",
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Sinhgad Institute of Technology & Science, Pune (2022–2026)",
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[700],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "SGPA: 9.8 / 10",
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[800],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
-  ),
-),
-
-
-// Footer Section
-Container(
-  key: _contactKey,
-  width: double.infinity,
-  color: Colors.blueGrey[900],
-  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      // Section Heading
-      const Text(
-        "Let's Connect",
-        style: TextStyle(
-          fontSize: 34,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-          letterSpacing: 1.2,
-        ),
-      ),
-      const SizedBox(height: 12),
-
-      // Tagline
-      const Text(
-        "Have a project in mind, collaboration idea, or just want to say hello? \nI’d love to hear from you!",
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 16,
-          color: Colors.white70,
-          height: 1.5,
-        ),
-      ),
-      const SizedBox(height: 30),
-
-      // Main Contact Buttons
-      Wrap(
-        spacing: 16,
-        runSpacing: 12,
-        alignment: WrapAlignment.center,
-        children: [
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.tealAccent,
-              foregroundColor: Colors.black,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-              elevation: 3,
-            ),
-            onPressed: () async {
-              final Uri emailUri = Uri(
-                scheme: 'mailto',
-                path: 'prajaktajadhav177@gmail.com',
-                query: 'subject=Portfolio Contact',
-              );
-              if (await canLaunchUrl(emailUri)) {
-                await launchUrl(emailUri);
-              }
-            },
-            icon: const Icon(Icons.email_outlined),
-            label: const Text("Email Me"),
-          ),
-          // ElevatedButton.icon(
-          //   style: ElevatedButton.styleFrom(
-          //     backgroundColor: Colors.tealAccent,
-          //     foregroundColor: Colors.black,
-          //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-          //     elevation: 3,
-          //   ),
-          //   onPressed: () async {
-          //     final Uri phoneUri = Uri(scheme: 'tel', path: '+919421950013');
-          //     if (await canLaunchUrl(phoneUri)) {
-          //       await launchUrl(phoneUri);
-          //     }
-          //   },
-          //   icon: const Icon(Icons.phone_outlined),
-          //   label: const Text("Call"),
-          // ),
-        ],
-      ),
-
-      const SizedBox(height: 40),
-
-      // Social Media Icons Row
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _socialIconButton(
-            icon: FontAwesomeIcons.linkedin,
-            tooltip: "LinkedIn",
-            url: "https://www.linkedin.com/in/prajakta-jadhav-37484a260/",
-            color: Colors.lightBlueAccent,
-          ),
-          const SizedBox(width: 16),
-          _socialIconButton(
-            icon: FontAwesomeIcons.github,
-            tooltip: "GitHub",
-            url: "https://github.com/prajaktajadhav177",
-            color: Colors.white,
-          ),
-          const SizedBox(width: 16),
-          _socialIconButton(
-            icon: Icons.picture_as_pdf,
-            tooltip: "Download Resume",
-            url: "https://drive.google.com/file/d/1Fnc0uhd03yXKEj46LbF-Rrf6wsM2geXL/view?usp=drive_link", // Replace with actual resume link
-            color: Colors.redAccent,
-          ),
-        ],
-      ),
-
-      const SizedBox(height: 40),
-
-      // Divider Line for Clean Finish
-      Divider(color: Colors.white24, thickness: 0.7, indent: 60, endIndent: 60),
-
-      const SizedBox(height: 20),
-
-      // Copyright / Footer Note
-      const Text(
-        "© 2025 Prajakta Ganesh Jadhav • Built with Flutter ❤️",
-        style: TextStyle(
-          color: Colors.white60,
-          fontSize: 14,
-          letterSpacing: 0.5,
-        ),
-      ),
-    ],
-  ),
-)
-]
-)
-)
-);
-  }
+      ]),
+    );
   }
 
+  // ─── SKILLS ────────────────────────────────────────────────────
+  Widget _buildSkills(bool mob) {
+    final groups = [
+      _SkillGroup('Mobile & Frontend', kIndigo, [
+        _Skill(Icons.flutter_dash,             'Flutter & Dart'),
+        _Skill(Icons.phone_android_outlined,   'Cross-platform Dev'),
+        _Skill(Icons.web_outlined,             'Responsive UI/UX'),
+        _Skill(Icons.animation,                'Animations'),
+      ]),
+      _SkillGroup('Backend & Database', kCyan, [
+        _Skill(Icons.cloud_outlined,           'Firebase'),
+        _Skill(Icons.storage_outlined,         'SQL / SQLite / Sqflite'),
+        _Skill(Icons.dataset_outlined,         'MongoDB'),
+        _Skill(Icons.api_outlined,             'REST APIs'),
+        _Skill(Icons.lock_outline,             'Firebase Auth'),
+        _Skill(Icons.save_outlined,            'SharedPreferences'),
+      ]),
+      _SkillGroup('AI & Emerging Tech', kViolet, [
+        _Skill(Icons.psychology_outlined,      'Gemini API'),
+        _Skill(Icons.auto_awesome_outlined,    'AI/ML Integration'),
+        _Skill(Icons.manage_search_outlined,   'Sentiment Analysis'),
+        _Skill(Icons.document_scanner_outlined,'OCR & Document AI'),
+      ]),
+      _SkillGroup('Languages', kGreen, [
+        _Skill(Icons.code,                     'Dart'),
+        _Skill(Icons.terminal_outlined,        'Java'),
+        _Skill(Icons.terminal_outlined,        'C++'),
+        _Skill(Icons.code_outlined,            'Python'),
+      ]),
+      _SkillGroup('Tools & Workflow', kAmber, [
+        _Skill(FontAwesomeIcons.gitAlt,        'Git & GitHub / GitLab'),
+        _Skill(Icons.bug_report_outlined,      'Testing & Debugging'),
+        _Skill(Icons.speed_outlined,           'Performance Optimization'),
+        _Skill(Icons.design_services_outlined, 'UI/UX Design'),
+      ]),
+    ];
 
+    return Container(
+      key: _skillsKey,
+      width: double.infinity,
+      padding: _pad(mob),
+      color: kCardAlt,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        FadeSlideIn(child: _secTitle('Skills', accent: kCyan)),
+        const SizedBox(height: 48),
+        ...groups.asMap().entries.map((e) => FadeSlideIn(
+          delay: Duration(milliseconds: 80 * e.key),
+          child: Padding(padding: const EdgeInsets.only(bottom: 32),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(width: 3, height: 18,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [e.value.color, e.value.color.withOpacity(0.2)],
+                      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                    ),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(e.value.name, style: GoogleFonts.plusJakartaSans(
+                    color: kText, fontSize: 16, fontWeight: FontWeight.w700)),
+              ]),
+              const SizedBox(height: 14),
+              Wrap(spacing: 10, runSpacing: 10,
+                children: e.value.skills
+                    .map((s) => _SkillChip(s: s, color: e.value.color)).toList()),
+            ]),
+          ),
+        )),
+      ]),
+    );
+  }
+
+  // ─── EDUCATION ─────────────────────────────────────────────────
+  Widget _buildEducation(bool mob) => Container(
+    key: _eduKey,
+    width: double.infinity,
+    padding: _pad(mob),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [kBg, kSurface],
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      ),
+    ),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      FadeSlideIn(child: _secTitle('Education', accent: kGreen)),
+      const SizedBox(height: 48),
+      FadeSlideIn(delay: const Duration(milliseconds: 100),
+        child: _GlowCard(glowColor: kIndigo,
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _iconBox(Icons.school_outlined, kIndigo, size: 22),
+            const SizedBox(width: 20),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('B.E. in Computer Science & Engineering',
+                  style: GoogleFonts.plusJakartaSans(
+                      color: kText, fontSize: 20, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text('Sinhgad Institute of Technology & Science, Pune',
+                  style: GoogleFonts.plusJakartaSans(
+                      color: kIndigo, fontSize: 14, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text('2022 – 2026', style: GoogleFonts.plusJakartaSans(
+                  color: kTextDim, fontSize: 13)),
+              const SizedBox(height: 18),
+              Wrap(spacing: 12, runSpacing: 10, children: [
+                _glowBadge('🏅  SGPA: 9.8 / 10', kGreen),
+                _glowBadge('🏆  Elite Her Hackathon — Top 200 / 7000+ teams', kAmber),
+              ]),
+            ])),
+          ])),
+      ),
+    ]),
+  );
+
+  Widget _glowBadge(String text, Color c) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(colors: [c.withOpacity(0.14), c.withOpacity(0.04)]),
+      borderRadius: BorderRadius.circular(30),
+      border: Border.all(color: c.withOpacity(0.35)),
+      boxShadow: [BoxShadow(color: c.withOpacity(0.14), blurRadius: 10)],
+    ),
+    child: Text(text, style: GoogleFonts.plusJakartaSans(
+        color: c, fontSize: 13, fontWeight: FontWeight.w600)),
+  );
+
+  // ─── CONTACT ───────────────────────────────────────────────────
+  Widget _buildContact(bool mob) => Container(
+    key: _contactKey,
+    width: double.infinity,
+    padding: EdgeInsets.symmetric(horizontal: mob ? 20 : 80, vertical: mob ? 64 : 90),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [kSurface, kBg],
+        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      ),
+    ),
+    child: Stack(children: [
+      Positioned(top: -80, right: -60,
+        child: Container(width: 300, height: 300,
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            gradient: RadialGradient(colors: [kIndigo.withOpacity(0.10), Colors.transparent])))),
+      Positioned(bottom: -60, left: -80,
+        child: Container(width: 280, height: 280,
+          decoration: BoxDecoration(shape: BoxShape.circle,
+            gradient: RadialGradient(colors: [kCyan.withOpacity(0.08), Colors.transparent])))),
+      Column(children: [
+        FadeSlideIn(child: _ShimmerText("Let's Connect",
+            fontSize: mob ? 32 : 46,
+            colors: [kIndigo, kCyan, kViolet, kPink, kCyan, kIndigo])),
+        const SizedBox(height: 16),
+        FadeSlideIn(delay: const Duration(milliseconds: 100),
+          child: Text(
+            'Have a project in mind, a collaboration idea, or just want to say hi?',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(color: kTextMid, fontSize: 16, height: 1.6),
+          ),
+        ),
+        const SizedBox(height: 40),
+        FadeSlideIn(delay: const Duration(milliseconds: 200),
+          child: Wrap(spacing: 14, runSpacing: 14, alignment: WrapAlignment.center, children: [
+            _glowBtn('Email Me', Icons.email_outlined,
+                () => _open('mailto:prajaktajadhav177@gmail.com?subject=Portfolio Contact')),
+            _glowBtn('LinkedIn', FontAwesomeIcons.linkedin,
+                () => _open('https://www.linkedin.com/in/prajakta-jadhav-37484a260/'),
+                c: const Color(0xFF0A66C2)),
+            _ghostBtn('GitHub', FontAwesomeIcons.github,
+                () => _open('https://github.com/prajaktajadhav177')),
+          ]),
+        ),
+        const SizedBox(height: 60),
+        Container(height: 1,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [
+              Colors.transparent, kBorder.withOpacity(0.8), Colors.transparent]),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text('© 2025 Prajakta Ganesh Jadhav  ·  Built with Flutter & ❤️',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.plusJakartaSans(color: kTextDim, fontSize: 13)),
+      ]),
+    ]),
+  );
+}
+
+// ─── Data models ─────────────────────────────────────────────────
+class _ProjData {
+  final String title, desc, url;
+  final IconData icon;
+  final Color color;
+  final List<String> tags;
+  const _ProjData(this.title, this.desc, this.url, this.icon, this.color, this.tags);
+}
+
+class _SkillGroup {
+  final String name;
+  final Color color;
+  final List<_Skill> skills;
+  const _SkillGroup(this.name, this.color, this.skills);
+}
+
+class _Skill {
+  final IconData icon;
+  final String name;
+  const _Skill(this.icon, this.name);
+}
